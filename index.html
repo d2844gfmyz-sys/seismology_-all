@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>raspberry pi 地震儀專案介紹</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <style>
+        html {
+            scroll-behavior: smooth;
+        }
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #FFF5F6; /* 極致淡粉色底 */
+            color: #4A3E41; /* 優雅暖灰褐色文字 */
+        }
+        /* 定製化粉色系滾動條 */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #FFF5F6;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #FBCFE8;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #F472B6;
+        }
+        /* 輕柔的呼吸燈動畫 (用於點綴按鈕與重點區塊) */
+        @keyframes soft-pulse {
+            0%, 100% { transform: scale(1); opacity: 0.98; }
+            50% { transform: scale(1.01); opacity: 1; }
+        }
+        .pulse-card {
+            animation: soft-pulse 4s infinite ease-in-out;
+        }
+        
+        /* 漸變淡入動效 */
+        .fade-in-active {
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="overflow-x-hidden selection:bg-pink-200 selection:text-pink-900 relative">
+
+    <!-- 背景樹莓裝飾浮水印 (左側與右側) -->
+    <div class="absolute top-48 left-4 opacity-5 pointer-events-none select-none hidden lg:block">
+        <svg class="w-32 h-32 text-pink-400 fill-current" viewBox="0 0 24 24">
+            <path d="M12,2 C10,4.5 8,3.5 8,5.5 C8,6.5 9,7.5 11,6.5 C11,8 12,9 12,9 C12,9 13,8 13,6.5 C15,7.5 16,6.5 16,5.5 C16,3.5 14,4.5 12,2 Z" fill="#4ADE80"/>
+            <circle cx="12" cy="10" r="2.2" fill="currentColor"/>
+            <circle cx="9.5" cy="12" r="2.2" fill="currentColor"/>
+            <circle cx="14.5" cy="12" r="2.2" fill="currentColor"/>
+            <circle cx="12" cy="14" r="2.2" fill="currentColor"/>
+            <circle cx="9.8" cy="16" r="2.2" fill="currentColor"/>
+            <circle cx="14.2" cy="16" r="2.2" fill="currentColor"/>
+            <circle cx="12" cy="18" r="2" fill="currentColor"/>
+        </svg>
+    </div>
+    <div class="absolute top-[800px] right-4 opacity-5 pointer-events-none select-none hidden lg:block">
+        <svg class="w-40 h-40 text-pink-400 fill-current" viewBox="0 0 24 24">
+            <path d="M12,2 C10,4.5 8,3.5 8,5.5 C8,6.5 9,7.5 11,6.5 C11,8 12,9 12,9 C12,9 13,8 13,6.5 C15,7.5 16,6.5 16,5.5 C16,3.5 14,4.5 12,2 Z" fill="#4ADE80"/>
+            <circle cx="12" cy="10" r="2.2" fill="currentColor"/>
+            <circle cx="9.5" cy="12" r="2.2" fill="currentColor"/>
+            <circle cx="14.5" cy="12" r="2.2" fill="currentColor"/>
+            <circle cx="12" cy="14" r="2.2" fill="currentColor"/>
+            <circle cx="9.8" cy="16" r="2.2" fill="currentColor"/>
+            <circle cx="14.2" cy="16" r="2.2" fill="currentColor"/>
+            <circle cx="12" cy="18" r="2" fill="currentColor"/>
+        </svg>
+    </div>
+
+    <!-- 頁首與導覽 -->
+    <header class="w-full bg-white/70 backdrop-blur-md border-b border-pink-100 sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-2.5">
+                <!-- 樹莓 SVG Logo -->
+                <span class="w-9 h-9 rounded-full bg-pink-100 flex items-center justify-center">
+                    <svg class="w-6 h-6 fill-current" viewBox="0 0 24 24">
+                        <path d="M12,2 C10.5,3.8 8.5,3 8.5,4.8 C8.5,5.5 9.2,6.2 11,5.5 C11,6.8 12,7.5 12,7.5 C12,7.5 13,6.8 13,5.5 C14.8,6.2 15.5,5.5 15.5,4.8 C15.5,3 13.5,3.8 12,2 Z" fill="#4ADE80"/>
+                        <circle cx="12" cy="9.5" r="1.8" fill="#EC4899"/>
+                        <circle cx="9.8" cy="11.2" r="1.8" fill="#F43F5E"/>
+                        <circle cx="14.2" cy="11.2" r="1.8" fill="#F43F5E"/>
+                        <circle cx="12" cy="13" r="1.8" fill="#E11D48"/>
+                        <circle cx="10" cy="14.8" r="1.8" fill="#BE123C"/>
+                        <circle cx="14" cy="14.8" r="1.8" fill="#BE123C"/>
+                        <circle cx="12" cy="16.5" r="1.6" fill="#9F1239"/>
+                    </svg>
+                </span>
+                <span class="font-extrabold text-pink-700 tracking-wide">raspberry pi 地震儀專案</span>
+            </div>
+            <div class="flex items-center gap-6 text-sm font-bold">
+                <a href="#tech-specs" class="text-gray-500 hover:text-pink-700 transition">技術架構</a>
+                <a href="#reflection-section" class="text-gray-500 hover:text-pink-700 transition">實作心得</a>
+                <a href="#youtube-section" class="text-pink-600 hover:text-pink-800 transition flex items-center gap-1.5">
+                    <i class="fa-brands fa-youtube"></i> 專案影片
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-5xl mx-auto px-6 py-12 space-y-16">
+
+        <!-- 1. Hero 迎賓視覺區 -->
+        <section class="text-center space-y-6 py-10 relative">
+            <!-- 頂部雙樹莓圖案裝飾 -->
+            <div class="flex justify-center gap-4 mb-2">
+                <svg class="w-10 h-10 fill-current animate-bounce" viewBox="0 0 24 24" style="animation-duration: 3s;">
+                    <path d="M12,2 C10.5,3.8 8.5,3 8.5,4.8 C8.5,5.5 9.2,6.2 11,5.5 C11,6.8 12,7.5 12,7.5 C12,7.5 13,6.8 13,5.5 C14.8,6.2 15.5,5.5 15.5,4.8 C15.5,3 13.5,3.8 12,2 Z" fill="#4ADE80"/>
+                    <circle cx="12" cy="9.5" r="1.8" fill="#EC4899"/>
+                    <circle cx="9.8" cy="11.2" r="1.8" fill="#F43F5E"/>
+                    <circle cx="14.2" cy="11.2" r="1.8" fill="#F43F5E"/>
+                    <circle cx="12" cy="13" r="1.8" fill="#E11D48"/>
+                    <circle cx="10" cy="14.8" r="1.8" fill="#BE123C"/>
+                    <circle cx="14" cy="14.8" r="1.8" fill="#BE123C"/>
+                    <circle cx="12" cy="16.5" r="1.6" fill="#9F1239"/>
+                </svg>
+                <svg class="w-10 h-10 fill-current animate-bounce" viewBox="0 0 24 24" style="animation-duration: 4s; animation-delay: 0.5s;">
+                    <path d="M12,2 C10.5,3.8 8.5,3 8.5,4.8 C8.5,5.5 9.2,6.2 11,5.5 C11,6.8 12,7.5 12,7.5 C12,7.5 13,6.8 13,5.5 C14.8,6.2 15.5,5.5 15.5,4.8 C15.5,3 13.5,3.8 12,2 Z" fill="#4ADE80"/>
+                    <circle cx="12" cy="9.5" r="1.8" fill="#FB7185"/>
+                    <circle cx="9.8" cy="11.2" r="1.8" fill="#FDA4AF"/>
+                    <circle cx="14.2" cy="11.2" r="1.8" fill="#FDA4AF"/>
+                    <circle cx="12" cy="13" r="1.8" fill="#F43F5E"/>
+                    <circle cx="10" cy="14.8" r="1.8" fill="#E11D48"/>
+                    <circle cx="14" cy="14.8" r="1.8" fill="#E11D48"/>
+                    <circle cx="12" cy="16.5" r="1.6" fill="#BE123C"/>
+                </svg>
+            </div>
+            
+            <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-pink-100/60 border border-pink-200 text-pink-700 text-xs font-semibold">
+                <span class="w-2 h-2 rounded-full bg-pink-500"></span>
+                自主學習實作成果
+            </div>
+            <h1 class="text-4xl md:text-5xl font-black text-pink-950 leading-tight">
+                raspberry pi 地震儀專案介紹
+            </h1>
+            <p class="text-gray-600 max-w-2xl mx-auto text-base md:text-lg leading-relaxed">
+                本專案記錄我們如何運用 <strong>Raspberry Pi</strong>，歷經硬體配置的限制與感官盲點，最終成功轉型為高精度數位觀測站的開發故事。
+            </p>
+            
+            <div class="w-24 h-1 bg-gradient-to-r from-pink-300 via-pink-400 to-rose-300 mx-auto rounded-full mt-4"></div>
+        </section>
+
+        <!-- 2. 核心互動區：優化歷程三大階段 -->
+        <section class="bg-white rounded-3xl p-8 md:p-12 shadow-sm border border-pink-100 space-y-8">
+            <div class="text-center md:text-left space-y-2">
+                <h2 class="text-2xl md:text-3xl font-extrabold text-pink-950 flex items-center gap-3 justify-center md:justify-start">
+                    <i class="fa-solid fa-compass text-pink-500"></i>
+                    我們的優化歷程
+                </h2>
+                <p class="text-sm text-gray-500">點擊下方各個階段，探索我們在每個開發節點的構想、挑戰、失敗與轉變。</p>
+            </div>
+
+            <!-- 階段切換按鈕（選單） -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <!-- 第一階段按鈕 -->
+                <button onclick="switchPhase(1)" id="btn-phase-1" class="flex items-center gap-4 p-5 rounded-2xl border text-left transition-all duration-300 bg-pink-50/50 border-pink-200 text-pink-900 shadow-sm hover:bg-pink-100/50">
+                    <span class="w-10 h-10 rounded-xl bg-pink-200/50 flex items-center justify-center text-pink-700 font-extrabold shrink-0">I</span>
+                    <div>
+                        <div class="text-xs text-pink-600 font-semibold">第一階段</div>
+                        <div class="font-bold text-sm">LED 燈警示（未果）</div>
+                    </div>
+                </button>
+
+                <!-- 第二階段按鈕 -->
+                <button onclick="switchPhase(2)" id="btn-phase-2" class="flex items-center gap-4 p-5 rounded-2xl border text-left transition-all duration-300 bg-white border-pink-100 text-gray-700 hover:bg-pink-50/30">
+                    <span class="w-10 h-10 rounded-xl bg-pink-100/50 flex items-center justify-center text-pink-500 font-extrabold shrink-0">II</span>
+                    <div>
+                        <div class="text-xs text-gray-400 font-semibold">第二階段</div>
+                        <div class="font-bold text-sm">蜂鳴器預警（盲點）</div>
+                    </div>
+                </button>
+
+                <!-- 第三階段按鈕 -->
+                <button onclick="switchPhase(3)" id="btn-phase-3" class="flex items-center gap-4 p-5 rounded-2xl border text-left transition-all duration-300 bg-white border-pink-100 text-gray-700 hover:bg-pink-50/30">
+                    <span class="w-10 h-10 rounded-xl bg-pink-100/50 flex items-center justify-center text-pink-500 font-extrabold shrink-0">III</span>
+                    <div>
+                        <div class="text-xs text-gray-400 font-semibold">第三階段</div>
+                        <div class="font-bold text-sm">網頁數據（現代化）</div>
+                    </div>
+                </button>
+            </div>
+
+            <!-- 詳細內容面板 -->
+            <div class="bg-pink-50/30 rounded-2xl p-6 md:p-8 border border-pink-100 min-h-[360px]" id="phase-content-panel">
+                
+                <!-- 【第一階段內容】 -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center fade-in-active" id="content-p1">
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between">
+                            <span class="px-3 py-1 bg-pink-100 text-pink-700 text-xs font-bold rounded-md">第一階段：硬體直觀呈現</span>
+                            <span class="text-rose-500 text-sm font-semibold"><i class="fa-solid fa-triangle-exclamation mr-1"></i> 線材不足</span>
+                        </div>
+                        <h3 class="text-xl font-extrabold text-pink-950">原本想用 LED 燈數量代表震度</h3>
+                        <p class="text-gray-600 leading-relaxed text-base">
+                            「原本想用 LED 燈數量代表震度，類似早期的機械式地震儀，想用硬體直觀呈現，震度越大，燈亮越多顆，但受限於線材不足，所以調整內容」
+                        </p>
+                        <div class="p-4 bg-white/70 rounded-xl border border-pink-100 text-xs text-gray-500 flex items-start gap-2">
+                            <i class="fa-solid fa-info-circle text-pink-400 mt-0.5"></i>
+                            <span><strong>反思：</strong> 雖然線路繁瑣與配件缺失使第一步受阻，但這也逼著我們開始思考更具彈性且低實體線路依賴的解決方案。</span>
+                        </div>
+                    </div>
+                    
+                    <!-- 圖片位置：第一階段 -->
+                    <div class="bg-white p-3 rounded-2xl border border-pink-100 shadow-md">
+                        <div class="w-full h-64 overflow-hidden rounded-xl bg-pink-50 flex items-center justify-center relative">
+                            <!-- 底層設計佔位 -->
+                            <div class="absolute inset-0 flex flex-col items-center justify-center p-4 text-center select-none text-pink-400 bg-pink-50/80">
+                                <i class="fa-solid fa-lightbulb text-4xl mb-2 animate-pulse"></i>
+                                <span class="text-xs font-bold text-gray-700">IMG_4273.jpg</span>
+                                <span class="text-[10px] text-gray-400 mt-1 max-w-[200px]">第一階段：LED 燈實作嘗試</span>
+                            </div>
+                            <!-- 頂層真實圖片 -->
+                            <img src="https://raw.githubusercontent.com/d2844gfmyz-sys/seismology_-all/main/IMG_4273.jpg" alt="[第一階段：LED 燈實作嘗試]" class="absolute inset-0 w-full h-full object-cover transform hover:scale-105 transition duration-300 z-10" onerror="this.style.display='none'">
+                        </div>
+                        <p class="text-center text-xs text-gray-400 mt-2">▲ 實作現場：嘗試在麵包板上佈置 LED 燈線路</p>
+                    </div>
+                </div>
+
+                <!-- 【第二階段內容】 (預設隱藏) -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center hidden" id="content-p2">
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between">
+                            <span class="px-3 py-1 bg-amber-100 text-amber-800 text-xs font-bold rounded-md">第二階段：聽覺警報模擬</span>
+                            <span class="text-amber-600 text-sm font-semibold"><i class="fa-solid fa-ear-deaf mr-1"></i> 感受不敏感</span>
+                        </div>
+                        <h3 class="text-xl font-extrabold text-pink-950">改用蜂鳴器模擬預警系統 (EEW)</h3>
+                        <p class="text-gray-600 leading-relaxed text-base">
+                            「後來改用蜂鳴器頻率/音量，模擬地震預警系統（EEW）的警報聲，但發現人耳對其變化不夠敏感，感覺聲音沒有太大的變化」
+                        </p>
+                        <div class="p-4 bg-white/70 rounded-xl border border-pink-100 text-xs text-gray-500 flex items-start gap-2">
+                            <i class="fa-solid fa-info-circle text-pink-400 mt-0.5"></i>
+                            <span><strong>反思：</strong> 人類的感官對於微小、快速的頻率階梯變化存在生理盲點。這點醒了我們：地震科學需要依靠精確、可量化的「數據可視化」，而非單純的感官警示。</span>
+                        </div>
+                    </div>
+                    
+                    <!-- 圖片位置：第二階段 -->
+                    <div class="bg-white p-3 rounded-2xl border border-pink-100 shadow-md">
+                        <div class="w-full h-64 overflow-hidden rounded-xl bg-amber-50 flex items-center justify-center relative">
+                            <!-- 底層設計佔位 -->
+                            <div class="absolute inset-0 flex flex-col items-center justify-center p-4 text-center select-none text-amber-600 bg-amber-50/80">
+                                <i class="fa-solid fa-volume-high text-4xl mb-2 animate-pulse"></i>
+                                <span class="text-xs font-bold text-gray-700">IMG_4270.jpg</span>
+                                <span class="text-[10px] text-gray-400 mt-1 max-w-[200px]">第二階段：蜂鳴器測試與接線</span>
+                            </div>
+                            <!-- 頂層真實圖片 -->
+                            <img src="https://raw.githubusercontent.com/d2844gfmyz-sys/seismology_-all/main/IMG_4270.jpg" alt="[第二階段：蜂鳴器測試與接線]" class="absolute inset-0 w-full h-full object-cover transform hover:scale-105 transition duration-300 z-10" onerror="this.style.display='none'">
+                        </div>
+                        <p class="text-center text-xs text-gray-400 mt-2">▲ 實作現場：接上蜂鳴器模組進行音頻測試</p>
+                    </div>
+                </div>
+
+                <!-- 【第三階段內容】 (預設隱藏) -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center hidden" id="content-p3">
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between">
+                            <span class="px-3 py-1 bg-emerald-100 text-emerald-800 text-xs font-bold rounded-md">第三階段：數位觀測網</span>
+                            <span class="text-emerald-600 text-sm font-semibold"><i class="fa-solid fa-circle-check mr-1"></i> 高精度優化</span>
+                        </div>
+                        <h3 class="text-xl font-extrabold text-pink-950">轉型：向「現代數位地震觀測網」看齊！</h3>
+                        <p class="text-gray-600 leading-relaxed text-base font-medium">
+                            「最終我們決定向『現代數位地震觀測網』看齊！將樹莓派轉型為高精度數位觀測站，把數據即時上傳電腦網頁，利用視覺化圖表呈現精準的震波型態。」
+                        </p>
+                        <div class="p-4 bg-white/70 rounded-xl border border-pink-100 text-xs text-gray-500 flex items-start gap-2">
+                            <i class="fa-solid fa-info-circle text-pink-400 mt-0.5"></i>
+                            <span><strong>反思：</strong> 這是專案最重要的轉折。數位波形能夠記錄 P 波與 S 波的完整時序與振幅，將原本簡單的感應玩具提升到了專業觀測的層次。</span>
+                        </div>
+                    </div>
+                    
+                    <!-- 圖片位置：第三階段 -->
+                    <div class="bg-white p-3 rounded-2xl border border-pink-100 shadow-md">
+                        <div class="w-full h-64 overflow-hidden rounded-xl bg-emerald-50 flex items-center justify-center relative">
+                            <!-- 底層設計佔位 -->
+                            <div class="absolute inset-0 flex flex-col items-center justify-center p-4 text-center select-none text-emerald-700 bg-emerald-50/80">
+                                <i class="fa-solid fa-chart-line text-4xl mb-2 animate-pulse"></i>
+                                <span class="text-xs font-bold text-gray-700">IMG_4271.jpg</span>
+                                <span class="text-[10px] text-gray-400 mt-1 max-w-[200px]">第三階段：微型地震預警系統實時數據監測</span>
+                            </div>
+                            <!-- 頂層真實圖片 -->
+                            <img src="https://raw.githubusercontent.com/d2844gfmyz-sys/seismology_-all/main/IMG_4271.jpg" alt="[第三階段：微型地震預警系統實時數據監測]" class="absolute inset-0 w-full h-full object-cover transform hover:scale-105 transition duration-300 z-10" onerror="this.style.display='none'">
+                        </div>
+                        <p class="text-center text-xs text-gray-400 mt-2">▲ 實體成果：終端機輸出高精度實時 PGA 數據與有感地震分級</p>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- 3. 優化新增區塊：技術架構與材料清單 (已精簡為三欄式) -->
+        <section id="tech-specs" class="bg-white rounded-3xl p-8 md:p-12 shadow-sm border border-pink-100 space-y-8">
+            <div class="text-center md:text-left space-y-2">
+                <span class="px-2.5 py-1 rounded bg-pink-100 text-pink-700 text-xs font-bold uppercase tracking-wider">Tech Stack & Tools</span>
+                <h2 class="text-2xl md:text-3xl font-extrabold text-pink-950 flex items-center gap-3 justify-center md:justify-start">
+                    <i class="fa-solid fa-gears text-pink-500"></i>
+                    專案技術架構與硬體配置
+                </h2>
+                <p class="text-sm text-gray-500">我們在實作中整合了以下軟硬體，共同構建高精度的數位量測環境。</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- 硬體 1 -->
+                <div class="p-6 bg-pink-50/20 rounded-2xl border border-pink-100 flex flex-col justify-between hover:shadow-md transition">
+                    <div class="space-y-3">
+                        <div class="w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center text-pink-600 text-lg">
+                            <i class="fa-solid fa-microchip"></i>
+                        </div>
+                        <h3 class="font-bold text-pink-950">Raspberry Pi 樹莓派主機</h3>
+                        <p class="text-xs text-gray-500 leading-relaxed">作為觀測站主機核心，負責高頻率地動信號的連續讀取、數據包封裝與本地輕量儲存。</p>
+                    </div>
+                    <span class="text-[10px] font-mono text-pink-400 mt-4">Hardware Base</span>
+                </div>
+
+                <!-- 軟體 1 -->
+                <div class="p-6 bg-pink-50/20 rounded-2xl border border-pink-100 flex flex-col justify-between hover:shadow-md transition">
+                    <div class="space-y-3">
+                        <div class="w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center text-pink-600 text-lg">
+                            <i class="fa-brands fa-python"></i>
+                        </div>
+                        <h3 class="font-bold text-pink-950">Python 採集程序</h3>
+                        <p class="text-xs text-gray-500 leading-relaxed">撰寫核心多線程採集程序，結合 NumPy 計算地動 PGA 值並即時輸出有感地震級別。</p>
+                    </div>
+                    <span class="text-[10px] font-mono text-pink-400 mt-4">Python Scripts</span>
+                </div>
+
+                <!-- 軟體 2 -->
+                <div class="p-6 bg-pink-50/20 rounded-2xl border border-pink-100 flex flex-col justify-between hover:shadow-md transition">
+                    <div class="space-y-3">
+                        <div class="w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center text-pink-600 text-lg">
+                            <i class="fa-solid fa-chart-line"></i>
+                        </div>
+                        <h3 class="font-bold text-pink-950">現代網頁數據網</h3>
+                        <p class="text-gray-500 text-xs leading-relaxed">透過高能見度的視覺化排版，向現代數位觀測網看齊，讓複雜的地動訊號一目了然。</p>
+                    </div>
+                    <span class="text-[10px] font-mono text-pink-400 mt-4">Digital Network</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- 4. 專案實作心得 -->
+        <section id="reflection-section" class="bg-white rounded-3xl p-8 md:p-12 shadow-sm border border-pink-100 space-y-6">
+            <div class="text-center md:text-left space-y-2">
+                <span class="px-2.5 py-1 rounded bg-pink-100 text-pink-700 text-xs font-bold uppercase tracking-wider">Reflection</span>
+                <h2 class="text-2xl md:text-3xl font-extrabold text-pink-950 flex items-center gap-3 justify-center md:justify-start">
+                    <i class="fa-solid fa-heart text-pink-500"></i>
+                    專案實作心得
+                </h2>
+                <p class="text-sm text-gray-500">在動手實作的探索中，學習如何克服限制、團隊合作並解決問題。</p>
+            </div>
+
+            <div class="bg-gradient-to-r from-pink-50/50 to-rose-50/30 p-6 md:p-8 rounded-2xl border border-pink-100 relative overflow-hidden">
+                <!-- 裝飾用大型引號 -->
+                <div class="absolute -top-4 -right-2 text-pink-200/40 text-9xl font-serif pointer-events-none select-none">”</div>
+                
+                <div class="space-y-6 relative z-10">
+                    <p class="text-gray-700 text-base md:text-lg leading-relaxed indent-8">
+                        在這次的樹莓派操作過程中，我們遇到了不少挑戰。例如一開始因為<strong class="text-pink-700 font-bold">忘記接線方式</strong>，導致 LED 燈無法順利發光，後來也面臨<strong class="text-pink-700 font-bold">導線數量不足</strong>、無法完全呈現理想效果的窘境。
+                    </p>
+                    <p class="text-gray-700 text-base md:text-lg leading-relaxed indent-8">
+                        幸好組員在操作過程中有<strong class="text-pink-700 font-bold">拍照記錄</strong>，加上我們<strong class="text-pink-700 font-bold">善用 AI 工具</strong>進行求助與排錯，最終團隊齊心協力，還是順利完成了符合預期的成果。
+                    </p>
+
+                    <!-- 心得小亮點卡片組 -->
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-6 border-t border-pink-100">
+                        <div class="flex items-center gap-3 p-3 bg-white/80 rounded-xl border border-pink-100/50">
+                            <span class="w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center text-pink-600 shrink-0">
+                                <i class="fa-solid fa-camera"></i>
+                            </span>
+                            <div>
+                                <h4 class="text-xs font-bold text-gray-800">落實記錄</h4>
+                                <p class="text-[10px] text-gray-400">組員拍照詳實存檔</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3 p-3 bg-white/80 rounded-xl border border-pink-100/50">
+                            <span class="w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center text-pink-600 shrink-0">
+                                <i class="fa-solid fa-robot"></i>
+                            </span>
+                            <div>
+                                <h4 class="text-xs font-bold text-gray-800">智慧排錯</h4>
+                                <p class="text-[10px] text-gray-400">善用 AI 快速解Bug</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3 p-3 bg-white/80 rounded-xl border border-pink-100/50">
+                            <span class="w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center text-pink-600 shrink-0">
+                                <i class="fa-solid fa-people-group"></i>
+                            </span>
+                            <div>
+                                <h4 class="text-xs font-bold text-gray-800">團隊協作</h4>
+                                <p class="text-[10px] text-gray-400">齊心協力克服瓶頸</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 5. 專案歷程影片分享連結 -->
+        <section id="youtube-section" class="bg-gradient-to-br from-pink-50 to-rose-100 rounded-3xl p-8 md:p-12 border border-pink-100 shadow-sm flex flex-col md:flex-row items-center justify-between gap-8 pulse-card">
+            <div class="space-y-4 text-center md:text-left">
+                <div class="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center text-red-600 text-xl mx-auto md:mx-0">
+                    <i class="fa-brands fa-youtube"></i>
+                </div>
+                <div class="space-y-1">
+                    <h3 class="text-2xl font-extrabold text-pink-950">想要看看我們的手作與開發歷程嗎？</h3>
+                    <p class="text-gray-600 text-sm">我們把從零開始的電路配線、組裝外盒與調試程式錄製成了精采紀錄片！</p>
+                </div>
+            </div>
+            
+            <div class="shrink-0 w-full md:w-auto text-center">
+                <a href="https://youtu.be/3NrzpIlqQ-E?si=N6Xqe_VZTLScQX4X" target="_blank" class="inline-flex items-center gap-3 px-8 py-4 bg-red-600 hover:bg-red-500 text-white rounded-2xl font-bold transition-all shadow-md shadow-red-600/20 text-lg group">
+                    <span>觀看我們的 YouTube 影片</span>
+                    <i class="fa-solid fa-arrow-up-right-from-square text-sm group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform"></i>
+                </a>
+                <div class="mt-3 text-xs text-pink-800 font-medium">
+                    連結地址：https://youtu.be/3NrzpIlqQ-E
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- 頁尾 -->
+    <footer class="w-full bg-white border-t border-pink-100 py-8 text-center text-xs text-gray-400 mt-20">
+        <p>© 2026 樹莓派地震儀優化專案成果展 | 以優雅的粉色調固定排版</p>
+    </footer>
+
+    <!-- 懸浮式回到頂部按鈕 -->
+    <button onclick="window.scrollTo({top: 0, behavior: 'smooth'})" class="fixed bottom-8 right-8 w-12 h-12 rounded-full bg-pink-500 hover:bg-pink-600 text-white shadow-lg flex items-center justify-center transition-all duration-300 hover:-translate-y-1 z-50 group" title="回到頂部">
+        <i class="fa-solid fa-arrow-up group-hover:animate-bounce"></i>
+    </button>
+
+    <!-- 互動邏輯 -->
+    <script>
+        // 歷程切換邏輯
+        function switchPhase(phaseNum) {
+            // 所有內容隱藏，並移除動態淡入 class
+            const panels = [1, 2, 3];
+            panels.forEach(num => {
+                const p = document.getElementById('content-p' + num);
+                p.classList.add('hidden');
+                p.classList.remove('fade-in-active');
+            });
+
+            // 顯示選擇的內容並附加漸變淡入
+            const activePanel = document.getElementById('content-p' + phaseNum);
+            activePanel.classList.remove('hidden');
+            // 強制重繪觸發 CSS 動畫
+            void activePanel.offsetWidth;
+            activePanel.classList.add('fade-in-active');
+
+            // 所有按鈕樣式還原
+            for (let i = 1; i <= 3; i++) {
+                const btn = document.getElementById('btn-phase-' + i);
+                btn.className = "flex items-center gap-4 p-5 rounded-2xl border text-left transition-all duration-300 bg-white border-pink-100 text-gray-700 hover:bg-pink-50/30";
+                
+                // 還原數字標誌
+                const numBox = btn.querySelector('span');
+                numBox.className = "w-10 h-10 rounded-xl bg-pink-100/50 flex items-center justify-center text-pink-500 font-extrabold shrink-0";
+                
+                // 還原標題字色
+                const textDiv = btn.querySelector('div div:first-child');
+                textDiv.className = "text-xs text-gray-400 font-semibold";
+            }
+
+            // 激活選取按鈕的樣式
+            const activeBtn = document.getElementById('btn-phase-' + phaseNum);
+            activeBtn.className = "flex items-center gap-4 p-5 rounded-2xl border text-left transition-all duration-300 bg-pink-50/50 border-pink-200 text-pink-900 shadow-sm hover:bg-pink-100/50";
+            
+            const activeNumBox = activeBtn.querySelector('span');
+            activeNumBox.className = "w-10 h-10 rounded-xl bg-pink-200/50 flex items-center justify-center text-pink-700 font-extrabold shrink-0";
+            
+            const activeTextDiv = activeBtn.querySelector('div div:first-child');
+            activeTextDiv.className = "text-xs text-pink-600 font-semibold";
+        }
+    </script>
+</body>
+</html>
